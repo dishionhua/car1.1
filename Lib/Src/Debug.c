@@ -8,6 +8,7 @@
 #include "pid.h"
 #include "oled.h"
 #include "font.h"
+#include "motor.h"
 
 uint8_t sofa_data[50];
 uint8_t camera_data[50];
@@ -71,12 +72,35 @@ float parse_float_from_uart(const uint8_t* data, uint16_t length) {
 }
 
 
-
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size){
-        OLED_NewFrame();
         if (huart==&huart1){
+            OLED_NewFrame();
             if (Size==10){
                 if (camera_data[0]==0xA5 && camera_data[1]==0xA6 &&camera_data[9]==0x5B){
+
+                    uint8_t sensors[7];
+
+                    int weights[7] = {-3, -2, -1, 0, 1, 2, 3};//设置位置权重
+
+                    float Kp;// 比例系数（需调整）
+                    base_speed = 50;     // 基础速度
+
+                    memcpy(sensors, &camera_data[2], 7 * sizeof(int));//取出camera_data中的7个信号位数据
+
+                    // 计算偏差
+                    int error = 0;
+                    for (int i = 0; i < 7; i++) {
+                        error += sensors[i] * weights[i];
+                    }
+
+                    // PID控制
+                    int left_speed = base_speed + Kp * error;
+                    int right_speed = base_speed - Kp * error;
+
+                    Set_Pwmr(right_speed);
+                    Set_Pwml(left_speed);
+
+                    //OLED显示指令处理
                     int data1=camera_data[2]+camera_data[3]+camera_data[4]+camera_data[5];
                     int data2=camera_data[5]+camera_data[6]+camera_data[7]+camera_data[8];
                     if (data2>data1){
@@ -93,23 +117,20 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size){
                     }
                 }
             }
-            else if(Size==4){
-                if (camera_data[0]==0xA5 && camera_data[1]==0xA6 &&camera_data[3]==0x5B){
-                    int t=camera_data[2];
-                    if(t==1){
-                        OLED_PrintString(30, 30,"stop",&font16x16,OLED_COLOR_NORMAL);
+            else if (Size == 4) {
+                if (camera_data[0] == 0xA5 && camera_data[1] == 0xA6 && camera_data[3] == 0x5B) {
+                    int t = camera_data[2];
+                    if (t == 1) {
+                        OLED_PrintString(30, 30, "stop", &font16x16, OLED_COLOR_NORMAL);
                         stop_flag = 1;
-                    }
-                    else{
-                        OLED_PrintString(30, 30,"go_ahead",&font16x16,OLED_COLOR_NORMAL);
-
+                    } else {
+                        OLED_PrintString(30, 30, "go_ahead", &font16x16, OLED_COLOR_NORMAL);
                     }
                 }
             }
             OLED_ShowFrame();
-            ///HAL_UART_Receive_DMA(&huart1, receivedata1, sizeof(receivedata1));
             HAL_UARTEx_ReceiveToIdle_DMA(&huart1, camera_data, sizeof(camera_data));
-    }
+        }
         if (huart == &huart4) {
             const uint8_t second = sofa_data[1];
             const uint8_t third = sofa_data[2];

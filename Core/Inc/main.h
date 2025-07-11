@@ -36,7 +36,7 @@ extern "C" {
 
 /* Exported types ------------------------------------------------------------*/
 /* USER CODE BEGIN ET */
-
+extern float base_speed;
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/
