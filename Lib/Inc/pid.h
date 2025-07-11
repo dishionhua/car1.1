@@ -30,6 +30,6 @@ extern  Pid_Data angle_ring;
 extern  Pid_Data speed_ring_l;
 extern  Pid_Data speed_ring_r;
 
-void PID_update(Pid_Data p);
+void PID_update(Pid_Data *p);
 
 #endif // INC_PID_H_

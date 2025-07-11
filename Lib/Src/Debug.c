@@ -5,15 +5,13 @@
 #include "usart.h"
 #include <stdlib.h>
 #include <stdbool.h>
+#include "pid.h"
 #include "oled.h"
 #include "font.h"
-#include "pid.h"
-
 
 uint8_t sofa_data[50];
 uint8_t camera_data[50];
 int stop_flag = 0;
-
 
 float parse_float_from_uart(const uint8_t* data, uint16_t length) {
     // 最小有效数据长度检查 (P1= + 1个数字字符 + !#+ = 8字节)
@@ -74,8 +72,7 @@ float parse_float_from_uart(const uint8_t* data, uint16_t length) {
 
 
 
-void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) {
-    if (huart == &huart1) {
+void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size){
         OLED_NewFrame();
         if (huart==&huart1){
             if (Size==10){
@@ -112,74 +109,43 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) {
             OLED_ShowFrame();
             ///HAL_UART_Receive_DMA(&huart1, receivedata1, sizeof(receivedata1));
             HAL_UARTEx_ReceiveToIdle_DMA(&huart1, camera_data, sizeof(camera_data));
+    }
+        if (huart == &huart4) {
+            const uint8_t second = sofa_data[1];
+            const uint8_t third = sofa_data[2];
+            float value;
+            if(second == 'P' && third == '1')
+            {
+                value = parse_float_from_uart(sofa_data,(uint16_t)strlen((char*)sofa_data));
+                speed_ring_l.kp = value;
+            }
+            else if(second == 'I' && third == '1')
+            {
+                value = parse_float_from_uart(sofa_data,(uint16_t)strlen((char*)sofa_data));
+                speed_ring_l.ki = value;
+            }
+            else if(second == 'D' && third == '1')
+            {
+                value = parse_float_from_uart(sofa_data,(uint16_t)strlen((char*)sofa_data));
+                speed_ring_l.kd = value;
+            }
+            HAL_UARTEx_ReceiveToIdle_DMA(&huart4, sofa_data, sizeof(sofa_data));
         }
-    }
-    if (huart == &huart2){
-    const uint8_t second = sofa_data[1];
-    const uint8_t third = sofa_data[2];
-    float value;
-    if(second == 'P' && third == '1')
-    {
-        value = parse_float_from_uart(sofa_data,(uint16_t)strlen(sofa_data));
-        angle_ring.kp = value;
-    }
-    else if(second == 'I' && third == '1')
-    {
-        value = parse_float_from_uart(sofa_data,(uint16_t)strlen(sofa_data));
-        angle_ring.ki = value;
-    }
-    else if(second == 'D' && third == '1')
-    {
-        value = parse_float_from_uart(sofa_data,(uint16_t)strlen(sofa_data));
-        angle_ring.kd = value;
-    }
-    else if(second == 'P' && third == 'l')
-    {
-        value = parse_float_from_uart(sofa_data,(uint16_t)strlen(sofa_data));
-        speed_ring_l.kp = value;
-    }
-    else if(second == 'I' && third == 'l')
-    {
-        value = parse_float_from_uart(sofa_data,(uint16_t)strlen(sofa_data));
-        speed_ring_l.ki = value;
-    }
-    else if(second == 'D' && third == 'l')
-    {
-        value = parse_float_from_uart(sofa_data,(uint16_t)strlen(sofa_data));
-        speed_ring_l.kd = value;
-    }
-    else if(second == 'P' && third == 'r')
-    {
-        value = parse_float_from_uart(sofa_data,(uint16_t)strlen(sofa_data));
-        speed_ring_r.kp = value;
-    }
-    else if(second == 'I' && third == 'r')
-    {
-        value = parse_float_from_uart(sofa_data,(uint16_t)strlen(sofa_data));
-        speed_ring_r.ki = value;
-    }
-    else if(second == 'D' && third == 'r')
-    {
-        value = parse_float_from_uart(sofa_data,(uint16_t)strlen(sofa_data));
-        speed_ring_r.kd = value;
-    }
-    HAL_UARTEx_ReceiveToIdle_IT(&huart2, sofa_data, sizeof(sofa_data));
-    }
 }
 
 
 
 void UART_Printf(UART_HandleTypeDef *huart,const char *format, ...) {
-    va_list args;
-    va_start(args, format);
-    char buffer[64];  // 减小缓冲区
-    int len = vsnprintf(buffer, sizeof(buffer), format, args);
-    va_end(args);
+        va_list args;
+        va_start(args, format);
+        char buffer[64];  // 减小缓冲区
+        int len = vsnprintf(buffer, sizeof(buffer), format, args);
+        va_end(args);
 
-    if(len > 0 && len < sizeof(buffer)) {
-        HAL_UART_Transmit( huart, (uint8_t*)buffer, len,100);
+        if(len > 0 && len < sizeof(buffer)) {
+            HAL_UART_Transmit( huart, (uint8_t*)buffer, len,100);
+        }
     }
-}
 //void UART_Printf(const char *format, ...) {
 //    va_list args;
 //    va_start(args, format);
@@ -191,7 +157,6 @@ void UART_Printf(UART_HandleTypeDef *huart,const char *format, ...) {
 //        HAL_UART_Transmit(&huart1, (uint8_t*)buffer, len, 100);
 //    }
 //}
-
 
 
 

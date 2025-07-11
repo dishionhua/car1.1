@@ -7,6 +7,7 @@
       <w>huart</w>
       <w>oled</w>
       <w>systick</w>
+      <w>vofa</w>
       <w>vsnprintf</w>
     </words>
   </dictionary>

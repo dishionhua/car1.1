@@ -27,7 +27,7 @@ typedef struct Font {
 } Font;
 
 extern const Font font16x16;
-extern const Font font12x12;
+
 /**
  * @brief 图片结构体
  * @note  图片数据可以使用波特律动LED取模助手生成(https://led.baud-dance.com)
@@ -39,5 +39,6 @@ typedef struct Image {
 } Image;
 
 extern const Image bilibiliImg;
+extern const Image photoImg;
 
 #endif // __FONT_H

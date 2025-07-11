@@ -26,12 +26,16 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "MPU6050DMP.h"
 #include "Debug.h"
 #include "string.h"
 #include "get_speed.h"
 #include "pid.h"
 #include "motor.h"
+#include "stdio.h"
+#include "jy61p.h"
+#include "math.h"
+#include "oled.h"
+#include "font.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -52,18 +56,8 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-int times = 0;//视觉倍速定时
-int left_pwm = 0;
-int right_pwm = 0;
-int left_target = 100;
-int right_target= 100;
-int32_t L_actual = 0;
-int32_t R_actual = 0;
-float pitch,roll,yaw;
-
-float base_speed = 0.0; //正常速度
-float target_angle = 0.0;//正常角度
-
+float base_speed = 0.0f; //基础速度
+uint8_t RxData;//陀螺仪数据变量
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -74,38 +68,56 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+//浮点数转字符串
+char* fts(float num) {
+  static char buffer[50];
+  sprintf(buffer, "%.2f", num); // buffer = "123"
+  return buffer;
+}
+//陀螺仪数据获取
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
+  if (huart == &huart2) {
+    // 直接处理接收到的字节
+    jy61p_ReceiveData(RxData);
+    // 重新启用单字节接收
+    HAL_UART_Receive_DMA(huart, &RxData, 1);
+  }
+}
+//定时pid
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
   if (htim == &htim9) {
-    //视觉模块定时触发
-    times = (times + 1) % 11;
-    if (times == 10) {
-      char data[]="1\n";
-      HAL_UART_Transmit_DMA(&huart1,(uint8_t*)data, strlen(data));
-    }
-
+    //视觉信号
+    char data[]="1\n";
+    HAL_UART_Transmit_DMA(&huart1,data, strlen(data));
     //速度获取
-    L_actual = get_speed(&htim4);
-    R_actual = get_speed(&htim5);
     if (stop_flag != 1){
-      MPU6050_DMP_Get_Date(&pitch,&roll,&yaw);
       //角度环
-      angle_ring.target = target_angle;
-      PID_update(angle_ring);
-      speed_ring_l.target = base_speed - angle_ring.out;
-      speed_ring_r.target = base_speed + angle_ring.out;
+      angle_ring.target = 0.0f;
+      angle_ring.actual = Yaw;
+      PID_update(&angle_ring);
+      if (fabs(angle_ring.target - angle_ring.actual) < 2) angle_ring.out = 0;
+      speed_ring_l.target = 0 + angle_ring.out;
+      speed_ring_r.target = 0 - angle_ring.out;
       //速度环
-      speed_ring_l.actual = L_actual;
-      speed_ring_l.actual = R_actual;
-      PID_update(speed_ring_l);
-      PID_update(speed_ring_r);
+      speed_ring_l.actual = (float) get_speed(&htim4);;
+      speed_ring_r.actual = (float) get_speed(&htim5);
+      PID_update(&speed_ring_l);
+      PID_update(&speed_ring_r);
+      //vofa控制
+      UART_Printf(&huart4, "%.2f,%.2f\r\n", angle_ring.target, angle_ring.actual);
+      //OLED显示区域
+      OLED_NewFrame();
+      OLED_PrintASCIIString(0,0,fts(Yaw),&afont16x8,OLED_COLOR_NORMAL);
+      OLED_PrintASCIIString(0,18,fts(speed_ring_l.actual),&afont16x8,OLED_COLOR_NORMAL);
+      OLED_PrintASCIIString(0,36,fts(speed_ring_r.target),&afont16x8,OLED_COLOR_NORMAL);
+      OLED_ShowFrame();
       //控制电机
-      Set_Pwml(speed_ring_l.out);
-      Set_Pwmr(speed_ring_r.out);
+      Set_Pwml((int) speed_ring_l.out);
+      Set_Pwmr((int) speed_ring_r.out);
     }
     else {
-      Set_Pwml(0);
-      Set_Pwmr(0);
+      Motor_stop();
     }
   }
 }
@@ -143,7 +155,6 @@ int main(void)
   MX_GPIO_Init();
   MX_DMA_Init();
   MX_I2C1_Init();
-  MX_I2C2_Init();
   MX_TIM3_Init();
   MX_TIM4_Init();
   MX_TIM5_Init();
@@ -155,24 +166,23 @@ int main(void)
   /* USER CODE BEGIN 2 */
   //变量定义
   //陀螺仪初始化
-  int ret;
-  do{
-    ret=MPU6050_DMP_init();
-  }while(ret);
-
+  HAL_UART_Receive_DMA(&huart2, &RxData, 1);
   //定时器初始化
-  HAL_TIM_Encoder_Start(&htim4, TIM_CHANNEL_ALL); //开启编码器模式
-  HAL_TIM_Encoder_Start(&htim5, TIM_CHANNEL_ALL);
-  HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_ALL);//开启pwm
-  HAL_TIM_Base_Start_IT(&htim4);                  //开启编码器的中断
-  HAL_TIM_Base_Start_IT(&htim5);                  //开启编码器的中断
-  HAL_TIM_Base_Start_IT(&htim9);
-
-  //sofa接收初始化
-  HAL_UARTEx_ReceiveToIdle_IT(&huart2, sofa_data, sizeof(sofa_data));
-
+  HAL_TIM_Encoder_Start(&htim4, TIM_CHANNEL_1); //开启编码器模式
+  HAL_TIM_Encoder_Start(&htim4, TIM_CHANNEL_2);
+  HAL_TIM_Encoder_Start(&htim5, TIM_CHANNEL_1);
+  HAL_TIM_Encoder_Start(&htim5, TIM_CHANNEL_2);
+  HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);  //开启pwm
+  HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2);
+  HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_3);
+  HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_4);
+  HAL_TIM_Base_Start_IT(&htim9);//开启定时
+  //vofa接收初始化
+  HAL_UARTEx_ReceiveToIdle_DMA(&huart4, sofa_data, sizeof(sofa_data));
   //视觉接收初始化
   HAL_UARTEx_ReceiveToIdle_DMA(&huart1, camera_data, sizeof(camera_data));
+  //OLED初始化
+  OLED_Init();
   /* USER CODE END 2 */
 
   /* Infinite loop */

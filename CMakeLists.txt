@@ -52,21 +52,18 @@ target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
 # Add sources to executable
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user sources here
-        Lib/MPU6050DMP/Src/inv_mpu.c
-        Lib/MPU6050DMP/Src/inv_mpu_dmp_motion_driver.c
-        Lib/MPU6050DMP/Src/MPU6050DMP.c
         Lib/Src/Debug.c
         Lib/Src/get_speed.c
         Lib/Src/motor.c
         Lib/Src/pid.c
         Lib/Src/font.c
         Lib/Src/oled.c
+        Lib/Src/jy61p.c
 )
 
 # Add include paths
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined include paths
-        Lib/MPU6050DMP/Inc
         Lib/Inc
 )
 
@@ -81,3 +78,5 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
 
     # Add user defined libraries
 )
+
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -u _printf_float")
