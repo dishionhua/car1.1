@@ -5,11 +5,11 @@
 //右电机速度
 void Set_Pwmr(int out)
 {
-    int pwmb_abs;// 存储PWM绝对值
-    pwmb_abs=abs(out);
+    // 存储PWM绝对值
+    int pwmb_abs = abs(out);
     // 根据输入值正负设置电机方向
-    if(out>=0) Motor_Right(1);// 正转
-    else      Motor_Right(0);// 反转
+    if(out>=0) Motor_Right(0);// 正转
+    else      Motor_Right(1);// 反转
     //设置速度
     __HAL_TIM_SET_COMPARE(&htim3,TIM_CHANNEL_3,pwmb_abs);
     __HAL_TIM_SET_COMPARE(&htim3,TIM_CHANNEL_4,pwmb_abs);
@@ -17,10 +17,9 @@ void Set_Pwmr(int out)
 //左电机速度
 void Set_Pwml(int out)//赋值给PWM寄存器
 {
-    int pwma_abs;
-    pwma_abs=abs(out);
-    if(out>=0) Motor_Left(1);
-    else      Motor_Left(0);
+    int pwma_abs = abs(out);
+    if(out>=0) Motor_Left(0);
+    else      Motor_Left(1);
     //设置速度
     __HAL_TIM_SET_COMPARE(&htim3,TIM_CHANNEL_1,pwma_abs);
     __HAL_TIM_SET_COMPARE(&htim3,TIM_CHANNEL_2,pwma_abs);

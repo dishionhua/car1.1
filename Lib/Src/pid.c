@@ -7,24 +7,24 @@
 
 
 Pid_Data angle_ring = {
-    .kp = 3.0f,
+    .kp = 4.0f,
     .ki = 0.0f,
-    .kd = 0.7f,
+    .kd = 8.0f,
     .out_max = 100,
     .out_min = -100
   };
 
 Pid_Data speed_ring_l = {
-    .kp = 3.0f,
-    .ki = 0.7f,
+    .kp = 0.25f,
+    .ki = 0.05f,
     .kd = 0.0f,
     .out_max = 100,
     .out_min = -100
   };
 
 Pid_Data speed_ring_r = {
-    .kp = 3.0f,
-    .ki = 0.7f,
+    .kp = 0.25f,
+    .ki = 0.05f,
     .kd = 0.0f,
     .out_max = 100,
     .out_min = -100

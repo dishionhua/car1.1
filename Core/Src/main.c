@@ -93,12 +93,11 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     //速度获取
     if (stop_flag != 1){
       //角度环
-      angle_ring.target = 0.0f;
       angle_ring.actual = Yaw;
       PID_update(&angle_ring);
-      if (fabs(angle_ring.target - angle_ring.actual) < 2) angle_ring.out = 0;
-      speed_ring_l.target = 0 + angle_ring.out;
-      speed_ring_r.target = 0 - angle_ring.out;
+      if (fabsf(angle_ring.target - angle_ring.actual) < 3) angle_ring.out = 0;
+      speed_ring_l.target =base_speed - angle_ring.out;
+      speed_ring_r.target =base_speed + angle_ring.out;
       //速度环
       speed_ring_l.actual = (float) get_speed(&htim4);;
       speed_ring_r.actual = (float) get_speed(&htim5);
@@ -107,11 +106,11 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
       //vofa控制
       UART_Printf(&huart4, "%.2f,%.2f\r\n", angle_ring.target, angle_ring.actual);
       //OLED显示区域
-      OLED_NewFrame();
-      OLED_PrintASCIIString(0,0,fts(Yaw),&afont16x8,OLED_COLOR_NORMAL);
-      OLED_PrintASCIIString(0,18,fts(speed_ring_l.actual),&afont16x8,OLED_COLOR_NORMAL);
-      OLED_PrintASCIIString(0,36,fts(speed_ring_r.target),&afont16x8,OLED_COLOR_NORMAL);
-      OLED_ShowFrame();
+      // OLED_NewFrame();
+      // OLED_PrintASCIIString(0,0,fts(Yaw),&afont16x8,OLED_COLOR_NORMAL);
+      // OLED_PrintASCIIString(0,18,fts(speed_ring_l.actual),&afont16x8,OLED_COLOR_NORMAL);
+      // OLED_PrintASCIIString(0,36,fts(speed_ring_r.actual),&afont16x8,OLED_COLOR_NORMAL);
+      // OLED_ShowFrame();
       //控制电机
       Set_Pwml((int) speed_ring_l.out);
       Set_Pwmr((int) speed_ring_r.out);
