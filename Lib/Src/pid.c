@@ -7,7 +7,7 @@
 
 
 Pid_Data angle_ring = {
-    .kp = 4.0f,
+    .kp = 3.0f,
     .ki = 0.0f,
     .kd = 8.0f,
     .out_max = 100,
