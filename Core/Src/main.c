@@ -104,13 +104,13 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
       PID_update(&speed_ring_l);
       PID_update(&speed_ring_r);
       //vofa控制
-      UART_Printf(&huart4, "%.2f,%.2f\r\n", angle_ring.target, angle_ring.actual);
+      UART_Printf(&huart4, "%.2f,%.2f\r\n", speed_ring_l.target, speed_ring_l.actual);
       //OLED显示区域
-      // OLED_NewFrame();
-      // OLED_PrintASCIIString(0,0,fts(Yaw),&afont16x8,OLED_COLOR_NORMAL);
-      // OLED_PrintASCIIString(0,18,fts(speed_ring_l.actual),&afont16x8,OLED_COLOR_NORMAL);
-      // OLED_PrintASCIIString(0,36,fts(speed_ring_r.actual),&afont16x8,OLED_COLOR_NORMAL);
-      // OLED_ShowFrame();
+      OLED_NewFrame();
+      OLED_PrintASCIIString(0,0,fts(Yaw),&afont16x8,OLED_COLOR_NORMAL);
+      OLED_PrintASCIIString(0,18,fts(speed_ring_l.kp),&afont16x8,OLED_COLOR_NORMAL);
+      OLED_PrintASCIIString(0,36,fts(speed_ring_r.ki),&afont16x8,OLED_COLOR_NORMAL);
+      OLED_ShowFrame();
       //控制电机
       Set_Pwml((int) speed_ring_l.out);
       Set_Pwmr((int) speed_ring_r.out);

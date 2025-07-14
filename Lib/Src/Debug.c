@@ -18,7 +18,7 @@ int stop_flag = 0;
 
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size){
         if (huart==&huart1){
-            OLED_NewFrame();
+            // OLED_NewFrame();
             if (Size==10){
                 if (camera_data[0]==0xA5 && camera_data[1]==0xA6 &&camera_data[9]==0x5B){
 
@@ -26,7 +26,7 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size){
 
                     int weights[7] = {-3, -2, -1, 0, 1, 2, 3};//设置位置权重
 
-                    float Kp;// 比例系数（需调整）
+                    float k;// 比例系数（需调整）
 
                     memcpy(sensors, &camera_data[2], 7 * sizeof(int));//取出camera_data中的7个信号位数据
 
@@ -37,11 +37,8 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size){
                     }
 
                     // PID控制
-                    int left_speed = base_speed + Kp * error;
-                    int right_speed = base_speed - Kp * error;
-
-                    Set_Pwmr(right_speed);
-                    Set_Pwml(left_speed);
+                    speed_ring_l.target = base_speed + k * error;
+                    speed_ring_r.target = base_speed - k * error;
 
                     //OLED显示指令处理
                     int data1=camera_data[2]+camera_data[3]+camera_data[4]+camera_data[5];
@@ -71,7 +68,7 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size){
                     }
                 }
             }
-            OLED_ShowFrame();
+            // OLED_ShowFrame();
             HAL_UARTEx_ReceiveToIdle_DMA(&huart1, camera_data, sizeof(camera_data));
         }
         if (huart == &huart4) {
@@ -79,24 +76,34 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size){
             const uint8_t second = sofa_data[1];
             const uint8_t third = sofa_data[2];
             float value;
-            if (first == '2') base_speed = 50;
+            if (first == '4') base_speed = 0;
+            if (first == '3') base_speed = -100;
+            if (first == '2') base_speed = 100;
             if (first == '1') angle_ring.target =angle_ring.target + 45;
             if (first == '0') angle_ring.target =angle_ring.target - 45;
-            if(second == 'P' && third == '1')
+            //目标角度归一化
+            if (angle_ring.target > 180) {
+                angle_ring.target -= 360;
+            } else if (angle_ring.target < -180) {
+                angle_ring.target += 360;
+            }
             if(second == 'P' && third == '1')
             {
                 value = parse_float_from_uart(sofa_data,(uint16_t)strlen((char*)sofa_data));
-                angle_ring.kp = value;
+                speed_ring_l.kp = value;
+                speed_ring_r.kp = value;
             }
             else if(second == 'I' && third == '1')
             {
                 value = parse_float_from_uart(sofa_data,(uint16_t)strlen((char*)sofa_data));
-                angle_ring.ki = value;
+                speed_ring_l.ki = value;
+                speed_ring_r.ki = value;
             }
             else if(second == 'D' && third == '1')
             {
                 value = parse_float_from_uart(sofa_data,(uint16_t)strlen((char*)sofa_data));
-                angle_ring.kd = value;
+                speed_ring_l.kd = value;
+                speed_ring_r.kd = value;
             }
             HAL_UARTEx_ReceiveToIdle_DMA(&huart4, sofa_data, sizeof(sofa_data));
         }

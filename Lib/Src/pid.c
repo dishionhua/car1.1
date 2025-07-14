@@ -7,7 +7,7 @@
 
 
 Pid_Data angle_ring = {
-    .kp = 3.0f,
+    .kp = 4.0f,
     .ki = 0.0f,
     .kd = 8.0f,
     .out_max = 100,
@@ -15,16 +15,16 @@ Pid_Data angle_ring = {
   };
 
 Pid_Data speed_ring_l = {
-    .kp = 0.25f,
-    .ki = 0.05f,
+    .kp = 0.3f,
+    .ki = 0.04f,
     .kd = 0.0f,
     .out_max = 100,
     .out_min = -100
   };
 
 Pid_Data speed_ring_r = {
-    .kp = 0.25f,
-    .ki = 0.05f,
+    .kp = 0.3f,
+    .ki = 0.04f,
     .kd = 0.0f,
     .out_max = 100,
     .out_min = -100
@@ -34,6 +34,12 @@ void PID_update(Pid_Data *p) {
     // 计算当前误差
 	 p->error1 = p->error0;
 	 p->error0 = p->target - p->actual;
+	if (angle_ring.error0 > 180) {
+		angle_ring.error0 -= 360;
+	} else if (angle_ring.error0 < -180) {
+		angle_ring.error0 += 360;
+	}
+
     // 累积误差（积分项）
 	 if (p->ki != 0) {  // 安全的浮点数比较
 	         // 积分累加
