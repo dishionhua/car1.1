@@ -26,6 +26,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "car.h"
 #include "Debug.h"
 #include "string.h"
 #include "get_speed.h"
@@ -58,6 +59,7 @@
 /* USER CODE BEGIN PV */
 float base_speed = 0.0f; //基础速度
 uint8_t RxData;//陀螺仪数据变量
+int state = 2;//0是第一题，1是第二题第一段直线，2是第二题循迹。3是第二题第二段直线
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -69,7 +71,7 @@ void SystemClock_Config(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 //浮点数转字符串
-char* fts(float num) {
+char *fts(float num) {
   static char buffer[50];
   sprintf(buffer, "%.2f", num); // buffer = "123"
   return buffer;
@@ -87,37 +89,22 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
   if (htim == &htim9) {
-    //视觉信号
-    char data[]="1\n";
-    HAL_UART_Transmit_DMA(&huart1,data, strlen(data));
     //速度获取
-    if (stop_flag != 1){
-      //角度环
-      angle_ring.actual = Yaw;
-      PID_update(&angle_ring);
-      if (fabsf(angle_ring.target - angle_ring.actual) < 3) angle_ring.out = 0;
-      speed_ring_l.target =base_speed - angle_ring.out;
-      speed_ring_r.target =base_speed + angle_ring.out;
-      //速度环
-      speed_ring_l.actual = (float) get_speed(&htim4);;
-      speed_ring_r.actual = (float) get_speed(&htim5);
-      PID_update(&speed_ring_l);
-      PID_update(&speed_ring_r);
-      //vofa控制
-      UART_Printf(&huart4, "%.2f,%.2f\r\n", speed_ring_l.target, speed_ring_l.actual);
-      //OLED显示区域
-      OLED_NewFrame();
-      OLED_PrintASCIIString(0,0,fts(Yaw),&afont16x8,OLED_COLOR_NORMAL);
-      OLED_PrintASCIIString(0,18,fts(speed_ring_l.kp),&afont16x8,OLED_COLOR_NORMAL);
-      OLED_PrintASCIIString(0,36,fts(speed_ring_r.ki),&afont16x8,OLED_COLOR_NORMAL);
-      OLED_ShowFrame();
-      //控制电机
-      Set_Pwml((int) speed_ring_l.out);
-      Set_Pwmr((int) speed_ring_r.out);
+    if ((state == 0 && stop_flag == 0) || state == 1) {
+      car_straight();
+      // // vofa控制
+      // UART_Printf(&huart4, "%.2f,%.2f\r\n", speed_ring_l.target, speed_ring_r.actual);
+      // //OLED显示区域
+      // OLED_NewFrame();
+      // OLED_PrintASCIIString(0,0,fts(Yaw),&afont16x8,OLED_COLOR_NORMAL);
+      // OLED_PrintASCIIString(0,18,fts(speed_ring_l.kp),&afont16x8,OLED_COLOR_NORMAL);
+      // OLED_PrintASCIIString(0,36,fts(speed_ring_r.ki),&afont16x8,OLED_COLOR_NORMAL);
+      // OLED_ShowFrame();
     }
-    else {
+    else if (stop_flag == 1 && state == 0){
       Motor_stop();
     }
+
   }
 }
 
@@ -179,6 +166,8 @@ int main(void)
   //vofa接收初始化
   HAL_UARTEx_ReceiveToIdle_DMA(&huart4, sofa_data, sizeof(sofa_data));
   //视觉接收初始化
+  char data[]="2\n";
+  HAL_UART_Transmit_DMA(&huart1,data, strlen(data));
   HAL_UARTEx_ReceiveToIdle_DMA(&huart1, camera_data, sizeof(camera_data));
   //OLED初始化
   OLED_Init();
