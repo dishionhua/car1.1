@@ -30,13 +30,9 @@
 #include "Debug.h"
 #include "string.h"
 #include "get_speed.h"
-#include "pid.h"
-#include "motor.h"
 #include "stdio.h"
 #include "jy61p.h"
-#include "math.h"
 #include "oled.h"
-#include "font.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -59,7 +55,7 @@
 /* USER CODE BEGIN PV */
 float base_speed = 0.0f; //基础速度
 uint8_t RxData;//陀螺仪数据变量
-int state = 2;//0是第一题，1是第二题第一段直线，2是第二题循迹。3是第二题第二段直线
+int state = 2;//0是第一题，1是第二题直线，2是第二题循迹。
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -89,10 +85,12 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
   if (htim == &htim9) {
-    //速度获取
-    if ((state == 0 && stop_flag == 0) || state == 1) {
+    char data[]="2\n";
+    HAL_UART_Transmit_DMA(&huart1, data, strlen(data));
+    UART_Printf_DMA(&huart4, "%.2f,%.2f\r\n", base_speed, (float)k);
+    if (state == 0 || state == 1) {
       car_straight();
-      // // vofa控制
+      // vofa控制
       // UART_Printf(&huart4, "%.2f,%.2f\r\n", speed_ring_l.target, speed_ring_r.actual);
       // //OLED显示区域
       // OLED_NewFrame();
@@ -101,10 +99,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
       // OLED_PrintASCIIString(0,36,fts(speed_ring_r.ki),&afont16x8,OLED_COLOR_NORMAL);
       // OLED_ShowFrame();
     }
-    else if (stop_flag == 1 && state == 0){
-      Motor_stop();
-    }
-
   }
 }
 
@@ -166,8 +160,6 @@ int main(void)
   //vofa接收初始化
   HAL_UARTEx_ReceiveToIdle_DMA(&huart4, sofa_data, sizeof(sofa_data));
   //视觉接收初始化
-  char data[]="2\n";
-  HAL_UART_Transmit_DMA(&huart1,data, strlen(data));
   HAL_UARTEx_ReceiveToIdle_DMA(&huart1, camera_data, sizeof(camera_data));
   //OLED初始化
   OLED_Init();

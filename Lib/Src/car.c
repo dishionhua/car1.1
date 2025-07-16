@@ -15,10 +15,17 @@
 #include "pid.h"
 #include "tim.h"
 
-int k = 40;//循迹系数
+int k = 50;//循迹系数
 
 void car_straight() {
+    base_speed = 100;
     angle_ring.actual = Yaw;
+    //目标角度归一化
+    if (angle_ring.target > 180) {
+        angle_ring.target -= 360;
+    } else if (angle_ring.target < -180) {
+        angle_ring.target += 360;
+    }
     PID_update(&angle_ring);
     if (fabsf(angle_ring.target - angle_ring.actual) < 3) angle_ring.out = 0;
     speed_ring_l.target =base_speed - angle_ring.out;
@@ -32,6 +39,7 @@ void car_straight() {
 }
 
 void car_tracking(uint8_t* sensors) {
+    // base_speed = 50;
     // 计算偏差
     int weights[7] = {-3, -2, -1, 0, 1, 2, 3};
     int error = 0,p = 0;
@@ -39,10 +47,10 @@ void car_tracking(uint8_t* sensors) {
         error += sensors[i] * weights[i];
         p += sensors[i];
     }
-    int last_error = error / p;
+    int last_error = error*10 / p;
     // PID控制
-    speed_ring_l.target = base_speed + k*last_error;
-    speed_ring_r.target = base_speed - k*last_error;
+    speed_ring_l.target = base_speed + k*last_error/10;
+    speed_ring_r.target = base_speed - k*last_error/10;
     //限幅
     if (speed_ring_l.target < 0) speed_ring_l.target = 0;
     if (speed_ring_r.target < 0) speed_ring_r.target = 0;

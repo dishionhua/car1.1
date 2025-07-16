@@ -15,7 +15,6 @@
 
 uint8_t sofa_data[50];
 uint8_t camera_data[50];
-int stop_flag = 0;
 
 
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size){
@@ -25,44 +24,45 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size){
                 if (camera_data[0]==0xA5 && camera_data[1]==0xA6 &&camera_data[9]==0x5B){
                     //取出camera_data中的7个信号位数据
                     uint8_t sensors[7];
-                    memcpy(sensors, &camera_data[2], 7 * sizeof(int));
-                    //执行循环
-                    car_tracking(sensors);
-                    //OLED显示指令处理
+                    memcpy(sensors, &camera_data[2], 7 );
                     int data1=camera_data[2]+camera_data[3]+camera_data[4]+camera_data[5];
                     int data2=camera_data[5]+camera_data[6]+camera_data[7]+camera_data[8];
-                    if (data2>data1){
-                        OLED_PrintString(30, 30,"turn_right",&font16x16,OLED_COLOR_NORMAL);
+                    //第一题是否到达黑线
+                    if (state == 0) {
+                        if (data1 + data2 != 0) Motor_stop();
                     }
-                    else if(data2<data1){
-                        OLED_PrintString(30, 30, "turn_left", &font16x16, OLED_COLOR_NORMAL);
+                    //第二题是否到达黑线
+                    if (state == 1) {
+                        if (data1 + data2 != 0) state = 2;
                     }
-                    else if(data2==0){
-                        OLED_PrintString(30, 30, "no way", &font16x16, OLED_COLOR_NORMAL);
-                    }
-                    else{
-                        OLED_PrintString(30, 30, "go ahead", &font16x16, OLED_COLOR_NORMAL);
-                    }
-                    //判断是否走完
-                    if (data1 + data2 == 0 && (Yaw < -170 || Yaw > 170)) {
-                        state = 3;
-                        angle_ring.target = 179;
-                    }
-                    if (data1 + data2 == 0 && (Yaw < -170 || Yaw > 170)) state = ;
-                }
-            }
-            else if (Size == 4) {//急停
-                if (camera_data[0] == 0xA5 && camera_data[1] == 0xA6 && camera_data[3] == 0x5B) {
-                    int t = camera_data[2];
-                    if (t == 1) {
-                        if (state == 0){
-                            OLED_PrintString(30, 30, "stop", &font16x16, OLED_COLOR_NORMAL);
-                            stop_flag = 1;
-                        }else if (state == 1) {
-                            state = 2;
+                    //判断循迹是否走完
+                    if (state == 2) {
+                        //执行循迹
+                        car_tracking(sensors);
+                        //OLED显示指令处理
+                        if (data2>data1){
+                            OLED_PrintString(30, 30,"turn_right",&font16x16,OLED_COLOR_NORMAL);
+                            OLED_PrintString(0, 0,fts((float)k),&font16x16,OLED_COLOR_NORMAL);
                         }
-                    } else {
-                        OLED_PrintString(30, 30, "go_ahead", &font16x16, OLED_COLOR_NORMAL);
+                        else if(data2<data1){
+                            OLED_PrintString(30, 30, "turn_left", &font16x16, OLED_COLOR_NORMAL);
+                            OLED_PrintString(0, 0,fts((float)k),&font16x16,OLED_COLOR_NORMAL);
+                        }
+                        else if(data2==0){
+                            OLED_PrintString(30, 30, "no way", &font16x16, OLED_COLOR_NORMAL);
+                            OLED_PrintString(0, 0,fts((float)k),&font16x16,OLED_COLOR_NORMAL);
+                        }
+                        else{
+                            OLED_PrintString(30, 30, "go ahead", &font16x16, OLED_COLOR_NORMAL);
+                            OLED_PrintString(0, 0,fts((float)k),&font16x16,OLED_COLOR_NORMAL);
+                        }
+                        // if (data1 + data2 == 0 && (Yaw < -170 || Yaw > 170)) {
+                        //     state = 1;
+                        //     angle_ring.target = 180;
+                        // }
+                        // if (data1 + data2 == 0 && (10 > Yaw > -10)) {
+                        //     Motor_stop();
+                        // }
                     }
                 }
             }
@@ -74,18 +74,28 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size){
             uint8_t second = sofa_data[1];
             uint8_t third = sofa_data[2];
             float value;
-            if (first == 'k') k =(second - '0') *10 +(third - '0');
-            if (first == 's') base_speed=(second - '0') *10 +(third - '0');
-            if (first == '4') base_speed = 0;
-            if (first == '3') base_speed -= 10;
-            if (first == '2') base_speed += 10;
-            if (first == '1') angle_ring.target =angle_ring.target + 45;
-            if (first == '0') angle_ring.target =angle_ring.target - 45;
-            //目标角度归一化
-            if (angle_ring.target > 180) {
-                angle_ring.target -= 360;
-            } else if (angle_ring.target < -180) {
-                angle_ring.target += 360;
+            switch (first) {
+                case 'k':
+                    k = (second - '0') * 10 + (third - '0');
+                    break;
+                case 's':
+                    base_speed = (second - '0') * 10 + (third - '0');
+                    break;
+                case '4':
+                    state = 4;
+                    break;
+                case '3':
+                    state = 3;
+                    break;
+                case '2':
+                    state = 2;
+                    break;
+                case '1':
+                    state = 1;
+                    break;
+                case '0':
+                    state = 0;
+                    break;
             }
             if(second == 'P' && third == '1')
             {
@@ -181,7 +191,17 @@ void UART_Printf(UART_HandleTypeDef *huart, const char *format, ...) {
     }
 }
 
+void UART_Printf_DMA(UART_HandleTypeDef *huart, const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+    char buffer[64]; // 减小缓冲区
+    int len = vsnprintf(buffer, sizeof(buffer), format, args);
+    va_end(args);
 
+    if (len > 0 && len < sizeof(buffer)) {
+        HAL_UART_Transmit_DMA(huart, (uint8_t *) buffer, len);
+    }
+}
 
 
 
