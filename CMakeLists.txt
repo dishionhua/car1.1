@@ -39,7 +39,9 @@ add_executable(${CMAKE_PROJECT_NAME}
         Lib/Inc/motor.h
         Lib/Src/motor.c
         Lib/Inc/get_speed.h
-        Lib/Src/get_speed.c)
+        Lib/Src/get_speed.c
+        Lib/Src/car.c
+        Lib/Inc/car.h)
 
 # Add STM32CubeMX generated sources
 add_subdirectory(cmake/stm32cubemx)

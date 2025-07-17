@@ -26,16 +26,14 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "car.h"
 #include "Debug.h"
 #include "string.h"
 #include "get_speed.h"
-#include "pid.h"
-#include "motor.h"
 #include "stdio.h"
 #include "jy61p.h"
-#include "math.h"
 #include "oled.h"
-#include "font.h"
+#include "pid.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -58,6 +56,7 @@
 /* USER CODE BEGIN PV */
 float base_speed = 0.0f; //基础速度
 uint8_t RxData;//陀螺仪数据变量
+int state = 2;//0是第一题，1是第二题直线，2是第二题循迹。
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -69,7 +68,7 @@ void SystemClock_Config(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 //浮点数转字符串
-char* fts(float num) {
+char *fts(float num) {
   static char buffer[50];
   sprintf(buffer, "%.2f", num); // buffer = "123"
   return buffer;
@@ -87,36 +86,20 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
   if (htim == &htim9) {
-    //视觉信号
-    char data[]="1\n";
-    HAL_UART_Transmit_DMA(&huart1,data, strlen(data));
-    //速度获取
-    if (stop_flag != 1){
-      //角度环
-      angle_ring.actual = Yaw;
-      PID_update(&angle_ring);
-      if (fabsf(angle_ring.target - angle_ring.actual) < 3) angle_ring.out = 0;
-      speed_ring_l.target =base_speed - angle_ring.out;
-      speed_ring_r.target =base_speed + angle_ring.out;
-      //速度环
-      speed_ring_l.actual = (float) get_speed(&htim4);;
-      speed_ring_r.actual = (float) get_speed(&htim5);
-      PID_update(&speed_ring_l);
-      PID_update(&speed_ring_r);
-      //vofa控制
-      UART_Printf(&huart4, "%.2f,%.2f\r\n", speed_ring_l.target, speed_ring_l.actual);
-      //OLED显示区域
-      OLED_NewFrame();
-      OLED_PrintASCIIString(0,0,fts(Yaw),&afont16x8,OLED_COLOR_NORMAL);
-      OLED_PrintASCIIString(0,18,fts(speed_ring_l.kp),&afont16x8,OLED_COLOR_NORMAL);
-      OLED_PrintASCIIString(0,36,fts(speed_ring_r.ki),&afont16x8,OLED_COLOR_NORMAL);
-      OLED_ShowFrame();
-      //控制电机
-      Set_Pwml((int) speed_ring_l.out);
-      Set_Pwmr((int) speed_ring_r.out);
-    }
-    else {
-      Motor_stop();
+    char data[]="2\n";
+    HAL_UART_Transmit_DMA(&huart1, data, strlen(data));
+    UART_Printf(&huart4, "%.2f,%.2f\r\n", speed_ring_l.target, speed_ring_r.actual);
+    // UART_Printf(&huart4, "%.2f,%.2f,%d\r\n", base_speed, (float)k,state);
+    if (state == 0 || state == 1) {
+      car_straight();
+      // vofa控制
+      // UART_Printf(&huart4, "%.2f,%.2f\r\n", speed_ring_l.target, speed_ring_r.actual);
+      // //OLED显示区域
+      // OLED_NewFrame();
+      // OLED_PrintASCIIString(0,0,fts(Yaw),&afont16x8,OLED_COLOR_NORMAL);
+      // OLED_PrintASCIIString(0,18,fts(speed_ring_l.kp),&afont16x8,OLED_COLOR_NORMAL);
+      // OLED_PrintASCIIString(0,36,fts(speed_ring_r.ki),&afont16x8,OLED_COLOR_NORMAL);
+      // OLED_ShowFrame();
     }
   }
 }
@@ -162,6 +145,7 @@ int main(void)
   MX_USART3_UART_Init();
   MX_TIM9_Init();
   MX_USART2_UART_Init();
+  MX_UART5_Init();
   /* USER CODE BEGIN 2 */
   //变量定义
   //陀螺仪初始化
@@ -181,6 +165,7 @@ int main(void)
   //视觉接收初始化
   HAL_UARTEx_ReceiveToIdle_DMA(&huart1, camera_data, sizeof(camera_data));
   //OLED初始化
+  HAL_Delay(20);
   OLED_Init();
   /* USER CODE END 2 */
 

@@ -36,7 +36,8 @@ extern "C" {
 
 /* Exported types ------------------------------------------------------------*/
 /* USER CODE BEGIN ET */
-extern float base_speed;
+  extern float base_speed;
+  extern int state;
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/
@@ -46,7 +47,7 @@ extern float base_speed;
 
 /* Exported macro ------------------------------------------------------------*/
 /* USER CODE BEGIN EM */
-
+  char* fts(float num);
 /* USER CODE END EM */
 
 /* Exported functions prototypes ---------------------------------------------*/
