@@ -19,8 +19,7 @@ uint8_t camera_data[50];
 
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size){
         if (huart==&huart1){
-            OLED_NewFrame();
-            if (Size==10){//循迹
+            if (Size==10){
                 if (camera_data[0]==0xA5 && camera_data[1]==0xA6 &&camera_data[9]==0x5B){
                     //取出camera_data中的7个信号位数据
                     uint8_t sensors[7];
@@ -29,7 +28,10 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size){
                     int data2=camera_data[5]+camera_data[6]+camera_data[7]+camera_data[8];
                     //第一题是否到达黑线
                     if (state == 0) {
-                        if (data1 + data2 != 0) Motor_stop();
+                        if (data1 + data2 != 0) {
+                            Motor_stop();
+                            stop_flag = 1;
+                        }
                     }
                     //第二题是否到达黑线
                     if (state == 1) {
@@ -40,16 +42,16 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size){
                         //执行循迹
                         car_tracking(sensors);
                         if (data1 + data2 == 0 && (Yaw < -170 || Yaw > 170)) {
-                            state = 1;
-                            angle_ring.target = 180;
-                        }
-                        if (data1 + data2 == 0 && (10 > Yaw > -10)) {
+                            // state = 1;
+                            // angle_ring.target = 180;
                             Motor_stop();
                         }
+                        // if (data1 + data2 == 0 && (10 > Yaw > -10)) {
+                        //     Motor_stop();
+                        // }
                     }
                 }
             }
-            OLED_ShowFrame();
             HAL_UARTEx_ReceiveToIdle_DMA(&huart1, camera_data, sizeof(camera_data));
         }
         if (huart == &huart4) {
@@ -57,8 +59,11 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size){
             uint8_t second = sofa_data[1];
             uint8_t third = sofa_data[2];
             float value;
-            if (first == 'k') {
-                k = (second - '0') * 10 + (third - '0');
+            if (first == 'p') {
+                Kp = (second - '0') * 10 + (third - '0');
+            }
+            else if (first == 'd') {
+                Kd = (second - '0') * 10 + (third - '0');
             }
             else if (first == 's') {
                 base_speed = (second - '0') * 10 + (third - '0');

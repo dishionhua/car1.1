@@ -6,7 +6,7 @@
 #define CAR_H
 #include <stdint.h>
 
-extern int k;
+extern int Kp,Kd;
 void car_straight();
 void car_tracking(uint8_t* sensors);
 

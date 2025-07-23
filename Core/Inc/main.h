@@ -38,6 +38,7 @@ extern "C" {
 /* USER CODE BEGIN ET */
   extern float base_speed;
   extern int state;
+  extern int stop_flag;
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/
@@ -82,6 +83,10 @@ void Error_Handler(void);
 #define Left_A_GPIO_Port GPIOD
 #define Left_B_Pin GPIO_PIN_13
 #define Left_B_GPIO_Port GPIOD
+#define BEE_Pin GPIO_PIN_14
+#define BEE_GPIO_Port GPIOD
+#define LED_Pin GPIO_PIN_15
+#define LED_GPIO_Port GPIOD
 #define L_IN1_Pin GPIO_PIN_2
 #define L_IN1_GPIO_Port GPIOG
 #define L_IN2_Pin GPIO_PIN_3

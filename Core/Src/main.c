@@ -54,9 +54,10 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-float base_speed = 0.0f; //基础速度
+float base_speed = 10.0f; //基础速度
 uint8_t RxData;//陀螺仪数据变量
 int state = 2;//0是第一题，1是第二题直线，2是第二题循迹。
+int stop_flag = 0;//第一题停止标志位
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -88,9 +89,12 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   if (htim == &htim9) {
     char data[]="2\n";
     HAL_UART_Transmit_DMA(&huart1, data, strlen(data));
-    UART_Printf(&huart4, "%.2f,%.2f\r\n", speed_ring_l.target, speed_ring_r.actual);
-    // UART_Printf(&huart4, "%.2f,%.2f,%d\r\n", base_speed, (float)k,state);
-    if (state == 0 || state == 1) {
+    UART_Printf(&huart4, "%.2f, %d, %d\r\n", base_speed, Kp, Kd);
+    OLED_NewFrame();
+    OLED_PrintASCIIString(0,0,fts(speed_ring_l.actual),&afont16x8,OLED_COLOR_NORMAL);
+    OLED_PrintASCIIString(0,18,fts(speed_ring_r.actual),&afont16x8,OLED_COLOR_NORMAL);
+    OLED_ShowFrame();
+    if ((state == 0 && stop_flag == 0) || state == 1) {
       car_straight();
       // vofa控制
       // UART_Printf(&huart4, "%.2f,%.2f\r\n", speed_ring_l.target, speed_ring_r.actual);
@@ -173,6 +177,10 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+    OLED_NewFrame();
+    OLED_PrintASCIIString(0,0,fts(speed_ring_l.actual),&afont16x8,OLED_COLOR_NORMAL);
+    OLED_PrintASCIIString(0,18,fts(speed_ring_r.actual),&afont16x8,OLED_COLOR_NORMAL);
+    OLED_ShowFrame();
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
